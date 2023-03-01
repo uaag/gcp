@@ -1,6 +1,7 @@
 import json
 import logging
 from pprint import pprint
+import ipaddress
 
 import time
 from boto3.dynamodb.conditions import Attr
@@ -73,7 +74,6 @@ def get_mgcp_source_credentials():
         .get("Parameter")
         .get("Value")
     )
-    print(service_account_info)
     logging.info(service_account)
 
     source_scopes = BASE_GCP_SCOPES
@@ -105,7 +105,6 @@ def get_mgcp_target_principal():
         .get("Parameter")
         .get("Value")
     )
-    print(mgcp_target_principal)
 
     return mgcp_target_principal
 
@@ -154,11 +153,11 @@ def get_subnets(mgcp_session, project, region):
     request = subnet_builder.subnetworks().list(project=project, region=region)
     while request is not None:
         response = request.execute()
-        pprint(response)
 
-        # for subnetwork in response['items']:
-        #     # TODO: Change code below to process each `subnetwork` resource:
-        #     #pprint(subnetwork)
+        for subnetwork in response['items']:
+            # TODO: Change code below to process each `subnetwork` resource:
+            cidr = ipaddress.IPv4Address(subnetwork['ipCidrRange'].split("/")[0])
+            pprint(cidr.is_private)
 
         request = subnet_builder.subnetworks().list_next(previous_request=request, previous_response=response)
 
@@ -174,10 +173,31 @@ def get_addresses(mgcp_session, project, region):
 
         request = address_builder.addresses().list_next(previous_request=request, previous_response=response)
 
+def get_loadbalancers(mgcp_session, project, region):
+    lb_builder = get_mgcp_builder(creds=mgcp_session)
+    request = lb_builder.urlMaps().list(project=project)
+    while request is not None:
+        response = request.execute()
+
+        pprint(response)
+
+        request = lb_builder.urlMaps().list_next(previous_request=request, previous_response=response)
+
 
 if __name__ == "__main__" :
         mgcp_session = get_mgcp_target_crendentials()
-        resp = get_Instances(mgcp_session, "test-devops-project-mgcp")
-        get_subnets(mgcp_session, "test-devops-project-mgcp", "asia-east1")
+        #resp = get_Instances(mgcp_session, "test-devops-project-mgcp")
+        #get_subnets(mgcp_session, "test-devops-project-mgcp", "asia-east1")
+        get_loadbalancers(mgcp_session, "flash-asset-359020", "us-central1")
+        # service = build('compute', 'v1', credentials=mgcp_session)
+        # request = service.regions().list(project="test-devops-project-mgcp")
+        # while request is not None:
+        #     response = request.execute()
+
+        #     for region in response['items']:
+        #         TODO: Change code below to process each `region` resource:
+        #         pprint(region)
+
+        #     request = service.regions().list_next(previous_request=request, previous_response=response)
         #get_addresses(mgcp_session, "test-devops-project-mgcp", "europe-west2")
         #print(json.dumps(resp,indent=2))
